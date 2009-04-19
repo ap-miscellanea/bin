@@ -5,19 +5,26 @@ use File::Spec::Functions qw( catfile rel2abs );
 
 sub run { my $r = system @_; exit $r if $r }
 
-die <<"" if not @ARGV;
-usage: ${\basename $0} <file> <destination>
+die <<"" if not @ARGV > 1;
+usage: ${\basename $0} <file> [file file ...] <destination>
        moves file to destination and creates a symlink
        from its previous location to the destination
 
-my ( $src, $dst ) = @ARGV;
+my $dst = pop @ARGV;
 
-die "${\basename $0}: not a file: $src\n"
-	if not -f $src;
+die <<"" if @ARGV > 1 and not -d $dst;
+${\basename $0}: with more than one source, destination must be a directory
 
-run mv => $src, $dst;
+if ( my @fail = grep { not -f } @ARGV ) {
+	die map "${\basename $0}: not a file: $_\n", @fail;
+}
 
-$dst = catfile $dst, basename $src
-	if -d $dst;
+for my $src ( @ARGV ) {
+	run mv => $src, $dst;
 
-run ln => -s => map { rel2abs $_ } $dst, $src;
+	my $fq_dst = -d $dst
+		? catfile $dst, basename $src
+		: $dst;
+
+	run ln => -s => map { rel2abs $_ } $fq_dst, $src;
+}
