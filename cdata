@@ -1,0 +1,105 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Getopt::Long;
+use Pod::Usage;
+
+use XML::LibXML;
+use XML::LibXML::XPathContext;
+
+GetOptions(
+	'h|help'    => sub { pod2usage( -verbose => 1 ) },
+	'man'       => sub { pod2usage( -verbose => 2 ) },
+	'f|file=s'  => \my $opt_infile,
+	'o|out=s'   => \my $opt_outfile,
+	'n|xmlns=s' => \my %ns,
+) and @ARGV or pod2usage();
+
+my $p = XML::LibXML->new();
+
+my $doc = $opt_infile ? $p->parse_file( $opt_infile ) : $p->parse_fh( \*STDIN );
+
+my $xc = XML::LibXML::XPathContext->new( $doc );
+$xc->registerNs( $a => $b ) while ( $a, $b ) = each %ns;
+
+for my $xpath ( @ARGV ) {
+	my ( $found, $count ) = ( 0, 0 );
+
+	for my $tn ( $xc->findnodes( $xpath ) ) {
+		++$found;
+		if(
+			$tn->isa( 'XML::LibXML::Text' )
+			and not $tn->isa( 'XML::LibXML::CDATASection' )
+		) {
+			++$count;
+			$tn->replaceNode( XML::LibXML::CDATASection->new( $tn->textContent ) );
+		}
+		elsif (
+			$tn->findvalue( 'count( * )' ) == 0
+			and $tn->findvalue( 'count( text() )' ) > 0
+		) {
+			++$count;
+			my $text = $tn->textContent;
+			$tn->removeChildNodes();
+			$tn->appendChild( XML::LibXML::CDATASection->new( $text ) );
+		}
+	}
+
+	print STDERR "Fixed up $count of $found nodes matching $xpath\n";
+}
+
+$opt_outfile ? $doc->toFile( $opt_outfile ) : print $doc->serialize;
+
+__END__
+
+=head1 NAME
+
+cdata -- replaces particular text nodes in an XML document with CDATA sections
+
+=head1 SYNOPSIS
+
+F<cdata>
+S<B<[ -f file ]>>
+S<B<[ -o file ]>>
+S<B<[ -n prefix namespace-uri ]>>
+S<B<xpath [ xpath ... ]>>
+
+=head1 DESCRIPTION
+
+C<cdata> looks for text nodes in a given XML document, addressed by one or more XPath expressions, and converts them to CDATA sections.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-h>, B<--help>
+
+Show a synopsis.
+
+=item B<--man>
+
+Browse the manpage.
+
+=item B<-f>, B<--file>
+
+The document is expected on C<STDIN> unless you specify a filename using the C<-f> option.
+
+=item B<-o>, B<--out>
+
+Output is sent to C<STDOUT> unless you specify a filename using the C<-o> option.
+
+=item B<-n>, B<--xmlns>
+
+The option will bind namespace URIs to a prefix for use in your XPath expression. Pass the pair as a single string, use an equals sign to delimit the prefix from the URI. F.ex,
+
+    cdata --xmlns html=http://www.w3.org/1999/xhtml
+
+=back
+
+=head1 COPYRIGHT/LICENSE
+
+Copyright (c) 2005, Aristotle Pagaltzis
+
+You are free to do anything you want with this program and to use it in any way for any purpose.
+If it breaks, you get to keep both pieces.
