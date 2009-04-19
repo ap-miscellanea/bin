@@ -1,0 +1,23 @@
+#!/usr/bin/perl -w
+use strict;
+use File::Basename qw( basename );
+use File::Spec::Functions qw( catfile rel2abs );
+
+sub run { my $r = system @_; exit $r if $r }
+
+die <<"" if not @ARGV;
+usage: ${\basename $0} <file> <destination>
+       moves file to destination and creates a symlink
+       from its previous location to the destination
+
+my ( $src, $dst ) = @ARGV;
+
+die "${\basename $0}: not a file: $src\n"
+	if not -f $src;
+
+run mv => $src, $dst;
+
+$dst = catfile $dst, basename $src
+	if -d $dst;
+
+run ln => -s => map { rel2abs $_ } $dst, $src;
