@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+no warnings qw( once qw );
+
+use File::Type;
+use File::Slurp;
+use URI;
+
+my $ft = File::Type->new();
+my $u = URI->new( 'data:' );
+
+sub urify {
+	my ( $type, $data ) = @_;
+	$u->media_type( $type );
+	$u->data( $data );
+	$u->as_string;
+}
+
+if ( @ARGV ) {
+	for my $filename ( @ARGV ) {
+		print "\n$filename\n", urify( $ft->checktype_filename( $filename ), scalar read_file $filename ), "\n";
+	}
+}
+else {
+	my $data = do { local $/; <> };
+	print urify( $ft->checktype_contents( $data ), $data ), "\n";
+}
