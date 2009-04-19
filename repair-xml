@@ -1,0 +1,3 @@
+#!/usr/bin/perl
+use XML::Liberal;
+XML::Liberal->new->parse_fh(STDIN)->toFH(STDOUT);

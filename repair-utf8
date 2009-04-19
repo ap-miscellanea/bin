@@ -1,0 +1,25 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Encode qw( decode FB_QUIET );
+use Getopt::Std;
+
+getopts 'e:h', \my %opt;
+
+my $contaminator = $opt{e} || 'iso-8859-1';
+
+binmode STDIN, ':bytes';
+binmode STDOUT, ':utf8';
+
+my $out;
+
+while( <> ) {
+	binmode ARGV, ':bytes';
+	$out = '';
+	while( length ){
+		$out .= decode( 'utf-8', $_, FB_QUIET );
+		$out .= decode( $contaminator, substr( $_, 0, 1 ), FB_QUIET ) if length;
+	}
+	print $out;
+}
