@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+use strict;
+
+die "usage: $0 [outfile]\n"
+	if @ARGV > 1;
+
+my $fh;
+
+if ( my ( $file ) = @ARGV ) {
+	open $fh, '+<', $file
+		or die "couldn't open $file for writing: $!\n";
+	select $fh;
+}
+
+$|++;
+
+print do { local $/; <STDIN> };
+
+truncate $fh, tell $fh
+	if defined $fh;
