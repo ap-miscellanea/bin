@@ -1,3 +1,2 @@
-#!/usr/bin/env perl -l
-use Data::UUID;
-print lc Data::UUID->new->create_str;
+#!/bin/sh
+exec perl -MData::UUID -le 'print lc Data::UUID->new->create_str'
