@@ -10,14 +10,14 @@ getopts 'e:h', \my %opt;
 my $contaminator = $opt{e} || 'iso-8859-1';
 
 binmode STDIN, ':bytes';
-binmode STDOUT, ':utf8';
+binmode STDOUT, ':encoding(UTF-8)';
 
 my $out;
 
 while( <> ) {
 	binmode ARGV, ':bytes';
 	$out = '';
-	while( length ){
+	while ( length ) {
 		$out .= decode( 'utf-8', $_, FB_QUIET );
 		$out .= decode( $contaminator, substr( $_, 0, 1 ), FB_QUIET ) if length;
 	}
