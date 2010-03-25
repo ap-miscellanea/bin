@@ -3,26 +3,44 @@ use strict;
 use warnings;
 no warnings qw( once qw );
 
-use File::Type;
+use Getopt::Std;
 use File::Slurp;
-use URI;
 
+getopts( 'sw:', \my %opt );
+
+die "usage: $0 [-s [-w N]] [file]\n" if @ARGV > 1;
+
+my ( $data, $type );
+
+require File::Type;
 my $ft = File::Type->new();
-my $u = URI->new( 'data:' );
-
-sub urify {
-	my ( $type, $data ) = @_;
-	$u->media_type( $type );
-	$u->data( $data );
-	$u->as_string;
-}
 
 if ( @ARGV ) {
-	for my $filename ( @ARGV ) {
-		print "\n$filename\n", urify( $ft->checktype_filename( $filename ), scalar read_file $filename ), "\n";
-	}
+	my $filename = shift;
+	$data = read_file $filename;
+	$type = $ft->checktype_filename( $filename );
 }
 else {
-	my $data = do { local $/; <> };
-	print urify( $ft->checktype_contents( $data ), $data ), "\n";
+	$data = read_file \*STDIN;
+	$type = $ft->checktype_contents( $data );
+}
+
+require URI;
+my $u = URI->new( 'data:' );
+
+$u->media_type( $type );
+$u->data( $data );
+
+$_ = $u->as_string;
+
+$\ = "\n";
+
+if ( $opt{s} ) {
+	my $w = $opt{w} || 72;
+	s!\A(.*?,)!!s;
+	print $1;
+	print $1 while /(.{1,$w})/gs;
+}
+else {
+	print;
 }
