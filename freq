@@ -1,0 +1,5 @@
+#!/usr/bin/env perl
+$/=\(2 ** 20);
+open STDOUT, '| sort | uniq -c | sort -rn';
+print while <>;
+close STDOUT;
