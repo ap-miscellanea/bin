@@ -122,7 +122,7 @@ my $base;
 my $p = HTML::LinkExtor->new( sub {
 	my $element = shift @_;
 	while( my ( $attr, $value ) = splice @_, 0, 2 ) {
-		my $url = URI->new_abs( $value, $base )->as_string;
+		my $url = length $base ? URI->new_abs( $value, $base )->as_string : $value;
 		print $url, "\n" if valid_link( $element, $attr, $url );
 	}
 } );
@@ -133,16 +133,11 @@ $ua->agent('');
 if ( @ARGV ) {
 	for( @ARGV ) {
 		if( -r ) {
-			$base = ( defined $opt_base and length $opt_base )
-				? $opt_base
-				: URI::file->new_abs( $_ )->as_string;
-			$p->parse_file( $_ )
-				or warn( "Couldn't parse $_\n" ), next;
+			$base = defined $opt_base ? $opt_base : URI::file->new_abs( $_ )->as_string;
+			$p->parse_file( $_ ) or warn( "Couldn't parse $_\n" ), next;
 		}
 		else {
-			$base = ( defined $opt_base and length $opt_base )
-				? $opt_base
-				: $_;
+			$base = defined $opt_base ? $opt_base : $_;
 			$ua->get( $_, ':content_cb' => sub { $p->parse( shift ) or die; } )
 				or warn( "Could neither open nor download $_\n" ), next;
 			$p->eof();
