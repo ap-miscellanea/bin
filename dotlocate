@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# This is a wrapper around slocate that makes it convenient
+# to use a locatedb local to the directory tree you are in.
+# All applicable command line arguments are passed straight
+# through to slocate.
+#
+# To create a new database simply `touch .slocatedb` at the
+# topmost directory of the tree you want to index, then run
+# `dotlocate -u`.
+#
+# There are many ways to get tricked by this in the same way
+# as putting . in your $PATH can, so beware (especially of
+# using it as root). But it is very convenient when that isn't
+# such a big deal!
+
+DB=.slocatedb
+
+die() { echo "$@" 1>&2 ; exit 1 ; }
+
+while ! [ -e "$DB" ] ; do
+	[ "$PWD" == / ] && die "No $DB file found"
+	cd ..
+done
+
+tput bold ; printf '%s' "$PWD/$DB" ; tput sgr0 ; echo :
+
+args=()
+for arg in "$@" ; do
+	case "$arg" in
+		-d|-o) die 'Database to use is automatically determined, omit -d and -o' ;;
+		-U)    die 'Use -u instead of -U (index is always relative to database)' ;;
+		-u)    args=( -c /dev/null "${args[@]}" -U "$PWD" ) ;;
+		*)     args=( "${args[@]}" "$arg" ) ;;
+	esac
+done
+
+exec slocate -d "$DB" -o "$DB" "${args[@]}"
