@@ -17,13 +17,12 @@
 DB=.slocatedb
 
 die() { echo "$@" 1>&2 ; exit 1 ; }
+say() { printf 'dotlocate: using %s\n' "$PWD/$DB" 1>&2 ; }
 
 while ! [ -e "$DB" ] ; do
 	[ "$PWD" == / ] && die "No $DB file found"
 	cd ..
 done
-
-tput bold ; printf '%s' "$PWD/$DB" ; tput sgr0 ; echo :
 
 args=()
 for arg in "$@" ; do
@@ -31,6 +30,7 @@ for arg in "$@" ; do
 		-d|-o) die 'Database to use is automatically determined, omit -d and -o' ;;
 		-U)    die 'Use -u instead of -U (index is always relative to database)' ;;
 		-u)    args=( -c /dev/null "${args[@]}" -U "$PWD" ) ;;
+		-v)    args=( "${args[@]}" -v ) ; say ;;
 		*)     args=( "${args[@]}" "$arg" ) ;;
 	esac
 done
