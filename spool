@@ -8,7 +8,7 @@ my $fh;
 
 if ( my ( $file ) = @ARGV ) {
 	open $fh, '+<', $file
-		or die "couldn't open $file for writing: $!\n";
+		or die "couldn't open $file for write-reading: $!\n";
 	select $fh;
 }
 
