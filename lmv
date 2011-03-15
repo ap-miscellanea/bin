@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
-use File::Basename qw( basename );
-use File::Spec::Functions qw( catfile rel2abs );
+use File::Basename qw( basename dirname );
+use File::Spec::Functions qw( catfile rel2abs abs2rel );
 
 sub run { my $r = system @_; exit $r if $r }
 
@@ -26,5 +26,9 @@ for my $src ( @ARGV ) {
 		? catfile $dst, basename $src
 		: $dst;
 
-	run ln => -s => map { rel2abs $_ } $fq_dst, $src;
+	$_ = rel2abs $_ for $fq_dst, $src;
+
+	$fq_dst = abs2rel $fq_dst, dirname $src;
+
+	run ln => -s => $fq_dst, $src;
 }
