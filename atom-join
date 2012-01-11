@@ -3,19 +3,37 @@ use 5.010;
 use strict;
 use XML::LibXML;
 use XML::Liberal;
+use Getopt::Std;
 
 my $p = XML::Liberal->new;
 
 my $xpath = XML::LibXML::XPathContext->new;
-$xpath->registerNs( atom => 'http://www.w3.org/2005/Atom' );
+$xpath->registerNs( a => 'http://www.w3.org/2005/Atom' );
+$xpath->registerNs( h => 'http://www.w3.org/1999/xhtml' );
 
-my $first = $p->parse_file( shift @ARGV );
-my ( $last_entry ) = $xpath->findnodes( '/atom:feed/atom:entry[last()]/following-sibling::text()[1]', $first );
+sub del { $_->parentNode->removeChild( $_ ) for @_ }
+
+getopts 'e:', \my %opt;
+my $expr = $opt{'e'};
+
+my $first = $p->parse_file( @ARGV );
+my $marker = do {
+	my ( $last_entry ) = $xpath->findnodes( '/a:feed/a:entry[last()]/following-sibling::text()[1]', $first );
+	$first->documentElement->insertBefore( $first->createComment(''), $last_entry );
+};
+
+del $xpath->findnodes( '/a:feed/a:entry|/a:feed/a:entry/preceding-sibling::text()[1]', $first );
 
 while ( @ARGV ) {
 	my $next = $p->parse_file( shift @ARGV );
-	$first->documentElement->insertBefore( $_, $last_entry )
-		for $xpath->findnodes( '/atom:feed/atom:entry|/atom:feed/atom:entry/preceding-sibling::text()[1]', $next );
+	for my $entry ( $xpath->findnodes( '/a:feed/a:entry', $next ) ) {
+		next if $expr and not $xpath->exists( $expr, $entry );
+		my ( $ws ) = $xpath->findnodes( 'preceding-sibling::text()[1]', $entry );
+		$first->documentElement->insertBefore( $ws, $marker );
+		$first->documentElement->insertBefore( $entry, $marker );
+	}
 }
+
+del $marker;
 
 $first->toFH( \*STDOUT );
