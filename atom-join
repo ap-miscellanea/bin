@@ -2,8 +2,9 @@
 use 5.010;
 use strict;
 use XML::LibXML;
+use XML::Liberal;
 
-my $p = XML::LibXML->new;
+my $p = XML::Liberal->new;
 
 my $xpath = XML::LibXML::XPathContext->new;
 $xpath->registerNs( atom => 'http://www.w3.org/2005/Atom' );
