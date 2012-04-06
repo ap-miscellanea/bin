@@ -1,46 +1,34 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-no warnings qw( once qw );
 
 use Getopt::Std;
-use File::Slurp;
+use File::Type ();
+use URI ();
 
 getopts( 'sw:', \my %opt );
 
 die "usage: $0 [-s [-w N]] [file]\n" if @ARGV > 1;
+my $width = $opt{s} && ( $opt{w} || 72 );
 
-my ( $data, $type );
+my ( $filename ) = @ARGV;
 
-require File::Type;
-my $ft = File::Type->new();
+my $data = do { local $/; <> };
 
-if ( @ARGV ) {
-	my $filename = shift;
-	$data = read_file $filename;
-	$type = $ft->checktype_filename( $filename );
-}
-else {
-	$data = read_file \*STDIN;
-	$type = $ft->checktype_contents( $data );
-}
+my $type = do {
+	my $ft = File::Type->new();
+	defined $filename ? $ft->checktype_filename( $filename ) : $ft->checktype_contents( $data );
+};
 
-require URI;
-my $u = URI->new( 'data:' );
+my $str = do {
+	my $u = URI->new( 'data:' );
+	$u->media_type( $type );
+	$u->data( $data );
+	$u->as_string;
+};
 
-$u->media_type( $type );
-$u->data( $data );
+$\ = $, = "\n";
 
-$_ = $u->as_string;
-
-$\ = "\n";
-
-if ( $opt{s} ) {
-	my $w = $opt{w} || 72;
-	s!\A(.*?,)!!s;
-	print $1;
-	print $1 while /(.{1,$w})/gs;
-}
-else {
-	print;
-}
+print $width
+	? map { /\A(.*?,)/gcs, /\G(.{1,$width})/gs } $str
+	: $str;
