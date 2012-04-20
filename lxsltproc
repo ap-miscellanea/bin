@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+use 5.012;
+use strict;
+use warnings;
+
+use Scalar::Util 'blessed';
+use Encode ();
+use XML::Liberal ();
+use XML::LibXSLT ();
+use XML::LibXML ();
+use HTML::HTML5::Parser ();
+use HTTP::Date qw( str2time time2isoz );
+
+use constant NS => 'tag:plasmasturm.org,2004:EXSLT-Functions';
+
+my $hp = HTML::HTML5::Parser->new;
+
+my $xc = XML::LibXML::XPathContext->new();
+$xc->registerNs( h => 'http://www.w3.org/1999/xhtml' );
+
+sub stringify { ( map {
+	$_ = $_->to_literal if blessed $_ and $_->isa( 'XML::LibXML::NodeList' );
+	$_ = Encode::encode 'us-ascii', $_, Encode::FB_HTMLCREF;
+} @_ )[0..$#_] }
+
+XML::LibXSLT->register_function( NS, 'http-to-iso', sub {
+	( time2isoz str2time stringify shift ) =~ s/ /T/r;
+} );
+
+XML::LibXSLT->register_function( NS, 'parse-html5', sub {
+	$xc->findnodes( '/h:html/h:body[1]', $hp->parse_string( stringify shift ) );
+} );
+
+my ( $xslt_file, $xml_file ) = @ARGV;
+
+my $xp = XML::LibXML->new( load_ext_dtd => 0 );
+
+my $doc = XML::Liberal->new( LibXML => load_ext_dtd => 0 )->load_xml( location => $xml_file );
+
+my $xslt = XML::LibXSLT->new->parse_stylesheet( XML::LibXML->load_xml( location => $xslt_file ) );
+$xslt->output_fh( $xslt->transform( $doc ), \*STDOUT );
