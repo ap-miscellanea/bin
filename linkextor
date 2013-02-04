@@ -1,67 +1,77 @@
 #!/usr/bin/env perl
+use 5.010;
 use strict;
 use warnings;
 
-use Getopt::Long;
-use Pod::Usage;
-use HTML::LinkExtor;
-use URI;
-use URI::file;
-use LWP::UserAgent;
+use Getopt::Long 'GetOptions';
+use Pod::Usage ();
+use HTML::Parser ();
+use HTML::Tagset ();
+use URI ();
+use URI::file ();
+use LWP::UserAgent ();
 
-my %filter;
-
-sub valid_link {
-	my ( $tag, $attr, $value ) = @_;
-	return 1 if not %filter;
-	my $attr_filter = $filter{ $tag } || $filter{ '' } || return;
-	my $patterns = $attr_filter->{ $attr } || $attr_filter->{ '' } || return;
-	return 1 if not @$patterns;
-	return 1 if grep $value =~ /$_/, @$patterns;
-	return;
-}
+++$|;
 
 GetOptions(
 	'h|help'     => sub { pod2usage( -verbose => 1 ) },
 	'man'        => sub { pod2usage( -verbose => 2 ) },
-	'b|base=s'   => ( \my $opt_base ),
-	'f|filter=s' => ( \my @opt_filter ),
+	'b|base=s'   => \my $opt_base,
+	'f|filter=s' => \my @opt_filter,
 ) or pod2usage();
 
-for( @opt_filter ) {
+my %filter;
+for ( @opt_filter ) {
 	my ( $tag, $attr, $pattern ) = split m!:!, $_, 3;
-	$attr = '' unless defined $attr;
-	push @{ $filter{ $tag }{ $attr } }, defined( $pattern ) ? qr/$pattern/ : ();
+	if ( length $attr ) {
+		push @{ $filter{ $tag }{ $attr } }, length $pattern ? qr/$pattern/ : ();
+	}
+	else {
+		my $attrs = $HTML::Tagset::linkElements{ $tag };
+		@{ $filter{ $tag } }{ @$attrs } = ( [] ) x @$attrs;
+	}
+}
+if ( not @opt_filter ) {
+	while ( my ( $tag, $attrs ) = each %HTML::Tagset::linkElements ) {
+		@{ $filter{ $tag } }{ @$attrs } = ( [] ) x @$attrs;
+	}
 }
 
 my $base;
-
-my $p = HTML::LinkExtor->new( sub {
-	my $element = shift @_;
-	while( my ( $attr, $value ) = splice @_, 0, 2 ) {
-		my $url = length $base ? URI->new_abs( $value, $base )->as_string : $value;
-		print $url, "\n" if valid_link( $element, $attr, $url );
+sub print_links {
+	my ( $tag, $attr ) = @_;
+	my $valid_attr = $filter{ $tag } or return;
+	while ( my ( $name, $patterns ) = each %$valid_attr ) {
+		my $value = $attr->{ $name } // next;
+		push @$patterns, qr/(?:)/ if not @$patterns;
+		for my $rx ( @$patterns ) {
+			next if $value !~ $rx;
+			say length $base ? URI->new_abs( $value, $base )->as_string : $value;
+		}
 	}
-} );
+}
+
+my $p = HTML::Parser->new(
+	api_version => 3,
+	start_h => [ \&print_links, 'tagname, attr' ],
+);
 
 my $ua = LWP::UserAgent->new();
 $ua->agent('');
 
-if ( @ARGV ) {
-	for( @ARGV ) {
-		if( -r ) {
-			$base = defined $opt_base ? $opt_base : URI::file->new_abs( $_ )->as_string;
-			$p->parse_file( $_ ) or warn( "Couldn't parse $_\n" ), next;
-		}
-		else {
-			$base = defined $opt_base ? $opt_base : $_;
-			$ua->get( $_, ':content_cb' => sub { $p->parse( shift ) or die; } )
-				or warn( "Could neither open nor download $_\n" ), next;
-			$p->eof();
-		}
+for( @ARGV ) {
+	if( -r ) {
+		$base = defined $opt_base ? $opt_base : URI::file->new_abs( $_ )->as_string;
+		$p->parse_file( $_ ) or warn( "Couldn't parse $_\n" ), next;
+	}
+	else {
+		$base = defined $opt_base ? $opt_base : $_;
+		$ua->get( $_, ':content_cb' => sub { $p->parse( shift ) or die; } )
+			or warn( "Could neither open nor download $_\n" ), next;
+		$p->eof();
 	}
 }
-else {
+if ( not @ARGV ) {
 	$base = $opt_base;
 	$p->parse_file( \*STDIN );
 }
