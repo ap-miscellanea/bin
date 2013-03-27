@@ -23,13 +23,11 @@ GetOptions(
 my %filter;
 for ( @opt_filter ) {
 	my ( $tag, $attr, $pattern ) = split m!:!, $_, 3;
-	if ( length $attr ) {
-		push @{ $filter{ $tag }{ $attr } }, length $pattern ? qr/$pattern/ : ();
-	}
-	else {
-		my $attrs = $HTML::Tagset::linkElements{ $tag };
-		@{ $filter{ $tag } }{ @$attrs } = ( [] ) x @$attrs;
-	}
+
+	my $attrs = length $attr ? [ $attr ] : $HTML::Tagset::linkElements{ $tag };
+	my @rx    = length $pattern ? qr/$pattern/ : ();
+
+	push @$_, @rx for @{ $filter{ $tag } }{ @$attrs };
 }
 if ( not @opt_filter ) {
 	while ( my ( $tag, $attrs ) = each %HTML::Tagset::linkElements ) {
