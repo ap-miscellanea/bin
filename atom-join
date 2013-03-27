@@ -24,12 +24,13 @@ my $marker = do {
 
 del $xpath->findnodes( '/a:feed/a:entry|/a:feed/a:entry/preceding-sibling::text()[1]', $first );
 
+my $ws;
 while ( @ARGV ) {
 	my $next = $p->parse_file( shift @ARGV );
 	for my $entry ( $xpath->findnodes( '/a:feed/a:entry', $next ) ) {
 		next if $expr and not $xpath->exists( $expr, $entry );
-		my ( $ws ) = $xpath->findnodes( 'preceding-sibling::text()[1]', $entry );
-		$first->documentElement->insertBefore( $ws, $marker );
+		$first->documentElement->insertBefore( $ws, $marker )
+			if ( $ws ) = $xpath->findnodes( 'preceding-sibling::text()[1]', $entry );
 		$first->documentElement->insertBefore( $entry, $marker );
 	}
 }
