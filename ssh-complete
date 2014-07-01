@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+# Copyright (c) 2010 Aristotle Pagaltzis {{{
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+# }}}
+
+use strict;
+
+sub get_command_line {
+	my $comp = substr $ENV{'COMP_LINE'}, 0, $ENV{'COMP_POINT'};
+	return split /[ \t]+/, $comp, -1; # if not good enough, use Text::ParseWords
+}
+
+sub get_host_suggestions {
+	my ( $host ) = @_;
+
+	my ( $config ) = glob '~/.ssh/config';
+	open my $fh, '<', $config or return;
+
+	my @suggestion;
+	while ( <$fh> ) {
+		my @word = split ' ', lc;
+		push @suggestion, @word if @word and 'host' eq shift @word;
+	}
+
+	my $host_rx = qr/\A${\quotemeta $host}/;
+
+	# TODO handle wildcard hosts better (e.g. *.example.com should
+	# result in foo offering foo.example.com as a completion)
+
+	my %seen;
+	return sort grep { !/[*?]/ and !$seen{$_}++ and /$host_rx/ } @suggestion;
+}
+
+sub usage {
+	die map "\n$_\n", (
+		"To use, issue the following command in bash:",
+		"\tcomplete -C ssh-complete -o default ssh\n" .
+		"\tcomplete -C ssh-complete -o default -o nospace sftp scp rsync",
+		"You probably want to put those lines in your ~/.bashrc file.\n",
+	);
+}
+
+usage() if not exists $ENV{'COMP_LINE'};
+
+my ( $cmd, @arg ) = get_command_line();
+my $word = pop @arg;
+print "$_\n" for get_host_suggestions( $word );
+
+# vim: ts=4 sts=4 sw=4 sr fdm=marker
