@@ -1,0 +1,117 @@
+#!/usr/bin/perl -w
+use strict;
+use Getopt::Std;
+
+my @table = (
+	# temperature
+	[ c => f => (
+		sub { ($_[0] * 9/5) + 32 },
+		sub { ($_[0] - 32) * 5/9 },
+	) ],
+	[ c => k => (
+		sub { $_[0] + 273.16 },
+		sub { $_[0] - 273.16 },
+	) ],
+
+	# mass/weight
+	[ stone => kg =>  6.35 ],
+	[ kg    =>  g =>  1000 ],
+	[ oz    =>  g => 28.35 ],
+	[ lbs   =>  g => 453.6 ],
+
+	# volume
+	[ l      => ml => 1000     ],
+	[ gallon =>  l => 3.78541  ],
+	[ floz   => ml => 29.57352 ],
+
+	# distance
+	[ ft   => m  =>   0.3048 ],
+	[ ft   => in =>       12 ],
+	[ in   => cm =>     2.54 ],
+	[ m    => cm =>      100 ],
+	[ yd   => m  =>   0.9144 ],
+	[ km   => m  =>     1000 ],
+	[ mile => km => 1.609347 ],
+	[ pc   => ly =>   3.2616 ],
+	[ ly   => m  => 9_460_730_472_580_800 ],
+	[ au   => m  =>       149_597_870_691 ],
+
+	# distance, sorta
+	[ ft_in => in => (
+		sub { my ( $ft, $in ) = split /\./, $_[0]; $ft * 12 + $in },
+		sub { sprintf '%d.%d', int($_[0] / 12), $_[0] % 12 },
+	) ],
+
+	# area
+	[ sqft => sqm => 0.0929 ],
+
+	# time
+	[ sec   => msec => 1000 ],
+	[ min   => sec  =>   60 ],
+	[ hr    => min  =>   60 ],
+	[ day   => hr   =>   24 ],
+	[ week  => day  =>    7 ],
+	[ moon  => day  =>   28 ],
+	[ year  => day  =>  365 ],
+
+	# energy
+	[ cal => j => 4.1868 ],
+
+	# power
+	[ kw => hp => 1.341 ],
+	[ kw => ps => 1.36 ],
+
+	# torque
+	[ lbfft => nm => 1.35581795 ],
+
+	# fuel consumption
+	[ mpg => l100km => ( sub { ( 100 * 3.78541 ) / ( $_[0] * 1.609347 ) } ) x 2 ],
+);
+
+getopts( 'ap:', \my %opt ) && @ARGV && ( 0 == @ARGV % 2 )
+	or die << "END_USAGE";
+usage:	unitconv [-a] [-p precision] <value> <unit> [<value> <unit> [..]]
+	-p     the number of decimal places [default: 2]
+
+	-a     force all possible conversions to be shown, even if
+	       insufficient display precision truncates the value to 0
+
+	<unit> can be one of: @{ my %seen; [ sort grep !$seen{$_}++, map @$_[0,1], @table ]}
+
+	Results will be printed on one line per input value/unit pair.
+END_USAGE
+
+my $prec = $opt{'p'} || 2;
+
+while ( @ARGV ) {
+	my %vu = reverse splice @ARGV, 0, 2;
+
+	my $k = 0;
+	while ( $k < keys %vu ) {
+		$k = keys %vu;
+		for my $conversion ( @table ) {
+			my ( $src, $dst, $ratio, $inv ) = @$conversion;
+
+			if ( exists $vu{$src} ) {
+				next if exists $vu{$dst};
+				$vu{$dst} = ref $ratio ? $ratio->( $vu{$src} ) : $vu{$src} * $ratio ;
+			}
+			elsif ( exists $vu{$dst} ) {
+				$vu{$src} = ref $ratio ?   $inv->( $vu{$dst} ) : $vu{$dst} / $ratio ;
+			}
+		}
+	}
+
+	unless ( $opt{'a'} ) {
+		while ( my ( $u, $v ) = each %vu ) {
+			delete $vu{$u} if 0 == sprintf "%.*f", $prec, $v;
+		}
+	}
+
+	local $\ = "\n";
+	local $, = ' ';
+	print
+		map { sprintf( "% 8.${prec}f", $vu{$_} ), $_ }
+		sort { $vu{ $a } <=> $vu{ $b } }
+		keys %vu;
+}
