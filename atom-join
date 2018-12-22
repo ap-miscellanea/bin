@@ -5,13 +5,13 @@ use XML::LibXML;
 use XML::Liberal;
 use Getopt::Std;
 
+sub del { $_->parentNode->removeChild( $_ ) for @_ }
+
 my $p = XML::Liberal->new;
 
 my $xpath = XML::LibXML::XPathContext->new;
 $xpath->registerNs( a => 'http://www.w3.org/2005/Atom' );
 $xpath->registerNs( h => 'http://www.w3.org/1999/xhtml' );
-
-sub del { $_->parentNode->removeChild( $_ ) for @_ }
 
 getopts 'e:', \my %opt;
 my $expr = $opt{'e'};
