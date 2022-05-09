@@ -9,7 +9,6 @@ use HTML::Parser ();
 use HTML::Tagset ();
 use URI ();
 use URI::file ();
-use LWP::UserAgent ();
 
 ++$|;
 
@@ -57,9 +56,6 @@ my $p = HTML::Parser->new(
 	start_h => [ \&print_links, 'tagname, attr' ],
 );
 
-my $ua = LWP::UserAgent->new();
-$ua->agent('');
-
 for( @ARGV ) {
 	if( -r ) {
 		$base = defined $opt_base ? $opt_base : URI::file->new_abs( $_ )->as_string;
@@ -67,7 +63,8 @@ for( @ARGV ) {
 	}
 	else {
 		$base = defined $opt_base ? $opt_base : $_;
-		$ua->get( $_, ':content_cb' => sub { $p->parse( shift ) or die; } )
+		local $ENV{'URL'} = $_;
+		$p->parse( scalar `curl -s "\$URL"` )
 			or warn( "Could neither open nor download $_\n" ), next;
 		$p->eof();
 	}
