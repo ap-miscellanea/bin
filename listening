@@ -1,0 +1,3 @@
+#!/bin/sh
+[ $# -le 1 ] || { echo "$0: too many parameters" 1>&2 ; exit 1 ; }
+exec lsof +c 0 -nP -iTCP${1+":$1"} -sTCP:LISTEN
