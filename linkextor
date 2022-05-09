@@ -20,6 +20,9 @@ GetOptions(
 	'f|filter=s' => \my @opt_filter,
 ) or pod2usage();
 
+push @{ $HTML::Tagset::linkElements{ $_ } }, 'src' for qw( audio track video source );
+push @{ $HTML::Tagset::linkElements{ 'video' } }, 'poster';
+
 my %filter;
 for ( @opt_filter ) {
 	my ( $tag, $attr, $pattern ) = split m!:!, $_, 3;
