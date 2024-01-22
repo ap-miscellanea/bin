@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Getopt::Long 'GetOptions';
-use Pod::Usage ();
+use Pod::Usage 'pod2usage';
 use HTML::Parser ();
 use HTML::Tagset ();
 use URI ();
