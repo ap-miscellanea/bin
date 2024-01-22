@@ -1,21 +1,22 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 use strict;
 use warnings;
 
 use Getopt::Std;
-use File::Type ();
 use URI ();
 
-getopts( 'sw:', \my %opt );
+getopts( 'sw:t:', \my %opt );
 
-die "usage: $0 [-s [-w columns]] [file]\n" if @ARGV > 1;
+die "usage: $0 [-s [-w columns]] [-t mimetype] [file]\n" if @ARGV > 1;
 my $width = $opt{'s'} && ( $opt{'w'} || 72 );
+my $type = $opt{'t'};
 
 my ( $filename ) = @ARGV;
 
 my $data = do { local $/; <> };
 
-my $type = do {
+$type ||= do {
+	require File::Type;
 	my $ft = File::Type->new();
 	defined $filename ? $ft->checktype_filename( $filename ) : $ft->checktype_contents( $data );
 };
