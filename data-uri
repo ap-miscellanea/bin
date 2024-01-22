@@ -9,7 +9,7 @@ use URI ();
 getopts( 'sw:', \my %opt );
 
 die "usage: $0 [-s [-w N]] [file]\n" if @ARGV > 1;
-my $width = $opt{s} && ( $opt{w} || 72 );
+my $width = $opt{'s'} && ( $opt{'w'} || 72 );
 
 my ( $filename ) = @ARGV;
 
